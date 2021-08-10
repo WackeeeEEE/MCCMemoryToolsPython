@@ -56,7 +56,7 @@ WIN_PAD_Y = 200
 # Instantiate imgOffsets for current reference image
 imgOffsets = ImageOffsets()
 
-print(f"name: {imgOffsets.name}\nscale: {imgOffsets.scale}\nx: {imgOffsets.start_x}\ny: {imgOffsets.start_y}")
+print(f"name: {imgOffsets.name}\nx: {imgOffsets.start_x}\ny: {imgOffsets.start_y}")
 
 # Define shifting image to match window
 def shift_img(img, imgOffsets):
