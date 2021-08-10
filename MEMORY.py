@@ -311,17 +311,15 @@ def create_handle(nameProcess):
         proc = Process(PIDs[0], nameProcess)
     return proc
 
-async def main():
-    MCC = create_handle(nameProcess)
-    g = Governor()
-    # level = playerOffsets.halo1.level
-    # levelWatcher = Watcher(MCC, PointerShort(level), name="h1-level", interval=5)
+class Root:
+    def __init__(self):
+        self.MCC = create_handle(nameProcess)
+        #g = Governor()
+        
+        self.h3xpos = playerOffsets.halo3.xpos
+        self.h3xposWatcher = Watcher(self.MCC, PointerShort(self.h3xpos), name="h3xpos", interval=.005)
+        #g.addWatcher(h3xposWatcher)
+        self.h3ypos = playerOffsets.halo3.ypos
+        self.h3yposWatcher = Watcher(self.MCC, PointerShort(self.h3ypos), name="h3ypos", interval=.005)
 
-    h3xpos = playerOffsets.halo3.xpos
-    h3xposWatcher = Watcher(MCC, PointerShort(h3xpos), name="h3xpos", interval=.005)
-    #g.addWatcher(h3xposWatcher)
-    h3ypos = playerOffsets.halo3.ypos
-    h3yposWatcher = Watcher(MCC, PointerShort(h3ypos), name="h3ypos", interval=.005)
-    #g.addWatcher(h3yposWatcher)
-    #await g.loop()
-asyncio.run(main())
+mcc = Root()

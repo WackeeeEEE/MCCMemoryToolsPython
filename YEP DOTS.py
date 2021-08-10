@@ -67,43 +67,49 @@ def shift_img(img, imgOffsets):
 	return shiftedImg
 
 # Logic to convert between pixels and ingame coords
-def coordsToPixels( playerCoords, scale): # 0 and 1 are ingame coords, x and y are pixels
-	x = int( ( ( IMG_MARGIN_X * scale ) - (CLIP_END_X - playerCoords[0] ) ) / scale )
-	y = int( ( ( IMG_MARGIN_Y * scale ) + (CLIP_START_Y - playerCoords[1] ) ) / scale )
+def coordsToPixels( playerCoords, imgScale): # 0 and 1 are ingame coords, x and y are pixels
+	x = int( ( ( IMG_MARGIN_X * imgScale ) - (CLIP_END_X - playerCoords[0] ) ) / imgScale )
+	y = int( ( ( IMG_MARGIN_Y * imgScale ) + (CLIP_START_Y - playerCoords[1] ) ) / imgScale )
 	#print(f"IGC: {playerCoords[0]}, {playerCoords[1]}\nPx: {x}, {y}")
 	return (x,y)
 
-# Create cv2 window
-windowName = f"Silo Clip Viewer - {imgOffsets.name}"
-cv2.namedWindow(windowName, cv2.WINDOW_AUTOSIZE)
-img = cv2.imread(imgName)
-shiftedImg = shift_img(img, imgOffsets)
-
-imgScale = (CLIP_START_X - CLIP_END_X) / (imgOffsets.start_x - imgOffsets.end_x)
 # print(f"Scale: {imgScale}")
 # leftMarginPx = 20 * imgScale
 
 async def updateMap():
 	playerCoords = await getPlayerPosition()
 	playerPx = coordsToPixels(playerCoords, imgScale)
-	playerDot = cv2.circle(shiftedImg, playerPx, 2, (0, 255, 0), -1)
+	playerDot = shiftedImg#.copy()
+	cv2.circle(playerDot, playerPx, 2, (0, 255, 0), -1)
 	cv2.imshow(windowName, playerDot)
 
 async def getPlayerPosition():
-	playerX = await MEMORY.h3xposWatcher.getCurrentValue()
-	playerY = await MEMORY.h3yposWatcher.getCurrentValue()
+	# playerX = await MEMORY.h3xposWatcher.getCurrentValue()
+	playerX = await MEMORY.mcc.h3xposWatcher.getCurrentValue()
+	playerY = await MEMORY.mcc.h3yposWatcher.getCurrentValue()
 	return (playerX, playerY)
 
 async def mainLoop():
+	# Create cv2 window
+	global windowName, img, shiftedImg, imgScale
+	windowName = f"Silo Clip Viewer - {imgOffsets.name}"
+	cv2.namedWindow(windowName, cv2.WINDOW_AUTOSIZE)
+	img = cv2.imread(imgName)
+	shiftedImg = shift_img(img, imgOffsets)
+	imgScale = (CLIP_START_X - CLIP_END_X) / (imgOffsets.start_x - imgOffsets.end_x)
+
 	#playerDot = cv2.circle(shiftedImg, ((imgOffsets.start_x - imgOffsets.end_x) + IMG_MARGIN_X, int(IMG_MARGIN_Y / 2)), 2, (0, 255, 0), -1)
-	playerPx = coordsToPixels(await getPlayerPosition())
-	playerDot = cv2.circle(shiftedImg, playerPx, 2, (0, 255, 0), -1)
+
+	playerPx = coordsToPixels(await getPlayerPosition(), imgScale)
+	playerDot = shiftedImg#.copy()
+	cv2.circle(playerDot, playerPx, 2, (0, 255, 0), -1)
 	cv2.imshow(windowName, playerDot)
 	cv2.resizeWindow(windowName, (imgOffsets.start_x - imgOffsets.end_x) + 2 * IMG_MARGIN_X, (imgOffsets.end_y - imgOffsets.start_y) + 2 * IMG_MARGIN_Y) # adding margins to window resolution
 	while True:
 		await updateMap()
 		if cv2.waitKey(16) & 0xFF == ord('1'):
 			break
+
 asyncio.run(mainLoop())
 cv2.destroyAllWindows()
 
