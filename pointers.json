@@ -1,0 +1,17 @@
+{
+    "halo1": {
+        "level": {
+            "offsets":["0x03A15F58", "0x8", "0x2AA7D58"],
+            "length":3,
+            "type":"string"
+            },
+        "tick": {
+            "offsets":["0x03A15F58", "0x8", "0x2B1C7C4"],
+            "length":4,
+            "type":"int"
+            }
+        },
+    "halo3": {
+        "xpos": []
+    }
+    }

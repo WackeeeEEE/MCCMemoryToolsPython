@@ -1,0 +1,53 @@
+<game name="Halo: MCC - WinStore">
+        <process>MCCWinStore-Win64-Shipping</process>
+        <options>
+            <option name="CE">
+                <base>38C8940</base>
+                <offsets>8,2A57EAC</offsets>
+                <maximumValue>.25</maximumValue>
+                <type>FloatVec3</type>
+                <decimals>2</decimals>
+                <unitConverter>0.075</unitConverter>
+            </option>
+            <option name="H2A">
+                <base>38C8940</base>
+                <offsets>28,13DF7C8</offsets>
+                <type>FloatVec3</type>
+                <maximumValue>20</maximumValue>
+                <decimals>2</decimals>
+                <unitConverter>2.25</unitConverter>
+            </option>
+            <option name="H3">
+                <base>38C8940</base>
+                <offsets>48,01164BEC,44</offsets>
+                <type>FloatVec3</type>
+                <maximumValue>20</maximumValue>
+                <decimals>2</decimals>
+                <unitConverter>0.512</unitConverter>
+            </option>
+            <option name="ODST">
+                <base>38C8940</base>
+                <offsets>A8,0114A6CC,44</offsets>
+                <type>FloatVec3</type>
+                <maximumValue>20</maximumValue>
+                <decimals>2</decimals>
+                <unitConverter>.350</unitConverter>
+            </option>
+            <option name="Reach">
+                <base>38C8940</base>
+                <offsets>C8,0178FC38,44</offsets>
+                <maximumValue>60</maximumValue>
+                <type>FloatVec3</type>
+                <decimals>2</decimals>
+                <unitConverter>2.2</unitConverter>
+            </option>
+            <option name="H4">
+                <base>38C8940</base>
+                <offsets>68,019076B0,44</offsets>
+                <maximumValue>30</maximumValue>
+                <type>FloatVec3</type>
+                <decimals>2</decimals>
+                <unitConverter>2.2</unitConverter>
+            </option>
+        </options>
+    </game>

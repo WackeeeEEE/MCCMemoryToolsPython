@@ -1,0 +1,39 @@
+{
+    "halo3": {
+        "xpos": {
+            "offsets":["0x3A24FF8", "0x48", "0x01164BEC", "0x4"],
+            "length":4,
+            "type":"float"
+        },
+        "ypos": {
+            "offsets":["0x3A24FF8", "0x48", "0x01164BEC", "0x8"],
+            "length":4,
+            "type":"float"
+        },
+        "zpos": {
+            "offsets":["0x3A24FF8", "0x48", "0x01164BEC", "0xC"],
+            "length":4,
+            "type":"float"
+        },
+        "xvel": {
+            "offsets":["0x3A24FF8", "0x48", "0x01164BEC", "0x44"],
+            "length":4,
+            "type":"float"
+        },
+        "yvel": {
+            "offsets":["0x3A24FF8", "0x48", "0x01164BEC", "0x48"],
+            "length":4,
+            "type":"float"
+        },
+        "zvel": {
+            "offsets":["0x3A24FF8", "0x48", "0x01164BEC", "0x4C"],
+            "length":4,
+            "type":"float"
+        }
+    },
+    "halo1": {
+        "level": {
+            "offsets": ["0x3A24FF8"]
+        }
+    }
+}

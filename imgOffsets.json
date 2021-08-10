@@ -1,0 +1,38 @@
+{
+    "centerOfClip_wide.PNG": {
+        "scale": -1,
+        "start_x": 1090,
+        "center_x": 555,
+        "end_x": 789,
+        "start_y": 20,
+        "center_y": 425,
+        "end_y": 876         
+    },
+    "centerOfClip_wideFar.PNG": {
+        "scale": -1,
+        "start_x": 660,
+        "center_x": 555,
+        "end_x": 450,
+        "start_y": 85,
+        "center_y": 425,
+        "end_y": 765
+    },
+    "centerOfClip.PNG": {
+        "scale": -1,
+        "start_x": 660,
+        "center_x": 555,
+        "end_x": 450,
+        "start_y": 85,
+        "center_y": 425,
+        "end_y": 765
+    },
+    "centerOfClip_marked.PNG": {
+        "scale": -1,
+        "start_x": 660,
+        "center_x": 555,
+        "end_x": 450,
+        "start_y": 85,
+        "center_y": 425,
+        "end_y": 765
+    }
+}
