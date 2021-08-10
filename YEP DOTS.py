@@ -20,17 +20,17 @@ playerOffsetFile.close()
 
 # Create ImageOffsets class
 class ImageOffsets:
-    def __init__(self):
-        self.name = imgName
-        self.scale = imgOffsetData[imgName]["scale"]
-        self.start_x = imgOffsetData[imgName]["start_x"]
-        self.center_x = imgOffsetData[imgName]["center_x"]
-        self.end_x = imgOffsetData[imgName]["end_x"]
-        self.start_y = imgOffsetData[imgName]["start_y"]
-        self.center_y = imgOffsetData[imgName]["center_y"]
-        self.end_y = imgOffsetData[imgName]["end_y"]
-    def update(self):
-        self.__init__()
+	def __init__(self):
+		self.name = imgName
+		#self.scale = imgOffsetData[imgName]["scale"]
+		self.start_x = imgOffsetData[imgName]["start_x"]
+		self.center_x = imgOffsetData[imgName]["center_x"]
+		self.end_x = imgOffsetData[imgName]["end_x"]
+		self.start_y = imgOffsetData[imgName]["start_y"]
+		self.center_y = imgOffsetData[imgName]["center_y"]
+		self.end_y = imgOffsetData[imgName]["end_y"]
+	def update(self):
+		self.__init__()
 
 # Define Starting Clip Position (for scaling coordinates to image)
 CLIP_START_X = -22.715
@@ -60,18 +60,18 @@ print(f"name: {imgOffsets.name}\nscale: {imgOffsets.scale}\nx: {imgOffsets.start
 
 # Define shifting image to match window
 def shift_img(img, imgOffsets):
-    img_rows, img_cols = img.shape[:2]
-    #translation_matrix = np.float32([ [1, 0, (-1 * imgOffsets.start_x - IMG_MARGIN_X - WIN_PAD_X) ], [0, 1, (-1 * imgOffsets.start_y - IMG_MARGIN_Y - WIN_PAD_Y) ] ])
-    translation_matrix = np.float32([ [1, 0, (-1 * imgOffsets.end_x) + IMG_MARGIN_X ], [0, 1, (-1 * imgOffsets.start_y) + IMG_MARGIN_Y ] ])
-    shiftedImg = cv2.warpAffine(img, translation_matrix, (img_cols, img_rows))
-    return shiftedImg
+	img_rows, img_cols = img.shape[:2]
+	#translation_matrix = np.float32([ [1, 0, (-1 * imgOffsets.start_x - IMG_MARGIN_X - WIN_PAD_X) ], [0, 1, (-1 * imgOffsets.start_y - IMG_MARGIN_Y - WIN_PAD_Y) ] ])
+	translation_matrix = np.float32([ [1, 0, (-1 * imgOffsets.end_x) + IMG_MARGIN_X ], [0, 1, (-1 * imgOffsets.start_y) + IMG_MARGIN_Y ] ])
+	shiftedImg = cv2.warpAffine(img, translation_matrix, (img_cols, img_rows))
+	return shiftedImg
 
 # Logic to convert between pixels and ingame coords
-def coordsToPixels(a, b, scale):
-    x = int( ( ( IMG_MARGIN_X * scale ) - (CLIP_END_X - a ) ) / scale )
-    y = int( ( ( IMG_MARGIN_Y * scale ) + (CLIP_START_Y - b ) ) / scale )
-    print(f"IGC: {playerX}, {playerY}\nPx: {x}, {y}")
-    return (x,y)
+def coordsToPixels( playerCoords, scale): # 0 and 1 are ingame coords, x and y are pixels
+	x = int( ( ( IMG_MARGIN_X * scale ) - (CLIP_END_X - playerCoords[0] ) ) / scale )
+	y = int( ( ( IMG_MARGIN_Y * scale ) + (CLIP_START_Y - playerCoords[1] ) ) / scale )
+	#print(f"IGC: {playerCoords[0]}, {playerCoords[1]}\nPx: {x}, {y}")
+	return (x,y)
 
 # Create cv2 window
 windowName = f"Silo Clip Viewer - {imgOffsets.name}"
@@ -80,24 +80,31 @@ img = cv2.imread(imgName)
 shiftedImg = shift_img(img, imgOffsets)
 
 imgScale = (CLIP_START_X - CLIP_END_X) / (imgOffsets.start_x - imgOffsets.end_x)
-print(f"Scale: {imgScale}")
-#leftMarginPx = 20 * imgScale
-playerX = MEMORY.h3xposWatcher.val
-playerY = MEMORY.h3yposWatcher.val
+# print(f"Scale: {imgScale}")
+# leftMarginPx = 20 * imgScale
 
-playerPx = coordsToPixels(playerX, playerY, imgScale)
+async def updateMap():
+	playerCoords = await getPlayerPosition()
+	playerPx = coordsToPixels(playerCoords, imgScale)
+	playerDot = cv2.circle(shiftedImg, playerPx, 2, (0, 255, 0), -1)
+	cv2.imshow(windowName, playerDot)
 
-#playerDot = cv2.circle(shiftedImg, ((imgOffsets.start_x - imgOffsets.end_x) + IMG_MARGIN_X, int(IMG_MARGIN_Y / 2)), 2, (0, 255, 0), -1)
-playerDot = cv2.circle(shiftedImg, playerPx, 2, (0, 255, 0), -1)
-cv2.imshow(windowName, playerDot)
-cv2.resizeWindow(windowName, (imgOffsets.start_x - imgOffsets.end_x) + 2 * IMG_MARGIN_X, (imgOffsets.end_y - imgOffsets.start_y) + 2 * IMG_MARGIN_Y) # adding margins to window resolution
-cv2.waitKey(0)
+async def getPlayerPosition():
+	playerX = await MEMORY.h3xposWatcher.getCurrentValue()
+	playerY = await MEMORY.h3yposWatcher.getCurrentValue()
+	return (playerX, playerY)
 
-# while True:
-#     # MEMORY.
-#     cv2.imshow(windowName, shiftedImg)
-#     if cv2.waitKey(16) & 0xFF == ord('1'):
-#         break
+async def mainLoop():
+	#playerDot = cv2.circle(shiftedImg, ((imgOffsets.start_x - imgOffsets.end_x) + IMG_MARGIN_X, int(IMG_MARGIN_Y / 2)), 2, (0, 255, 0), -1)
+	playerPx = coordsToPixels(await getPlayerPosition())
+	playerDot = cv2.circle(shiftedImg, playerPx, 2, (0, 255, 0), -1)
+	cv2.imshow(windowName, playerDot)
+	cv2.resizeWindow(windowName, (imgOffsets.start_x - imgOffsets.end_x) + 2 * IMG_MARGIN_X, (imgOffsets.end_y - imgOffsets.start_y) + 2 * IMG_MARGIN_Y) # adding margins to window resolution
+	while True:
+		await updateMap()
+		if cv2.waitKey(16) & 0xFF == ord('1'):
+			break
+asyncio.run(mainLoop())
 cv2.destroyAllWindows()
 
 #241, 726
@@ -137,57 +144,57 @@ autoaimed to / 71.63
 -26.7 16.65 -5.459
 
 <CheatEntry>
-      <ID>25948</ID>
-      <Description>"h3 x pos"</Description>
-      <VariableType>Float</VariableType>
-      <Address>"halo3.dll"+01164BEC</Address>
-      <Offsets>
-        <Offset>4</Offset>
-      </Offsets>
-    </CheatEntry>
-    <CheatEntry>
-      <ID>25949</ID>
-      <Description>"h3 y pos"</Description>
-      <VariableType>Float</VariableType>
-      <Address>"halo3.dll"+01164BEC</Address>
-      <Offsets>
-        <Offset>8</Offset>
-      </Offsets>
-    </CheatEntry>
-    <CheatEntry>
-      <ID>25950</ID>
-      <Description>"h3 z pos"</Description>
-      <VariableType>Float</VariableType>
-      <Address>"halo3.dll"+01164BEC</Address>
-      <Offsets>
-        <Offset>C</Offset>
-      </Offsets>
-    </CheatEntry>
-    <CheatEntry>
-      <ID>25945</ID>
-      <Description>"h3 x vel"</Description>
-      <VariableType>Float</VariableType>
-      <Address>"halo3.dll"+01164BEC</Address>
-      <Offsets>
-        <Offset>44</Offset>
-      </Offsets>
-    </CheatEntry>
-    <CheatEntry>
-      <ID>25946</ID>
-      <Description>"h3 y vel"</Description>
-      <VariableType>Float</VariableType>
-      <Address>"halo3.dll"+01164BEC</Address>
-      <Offsets>
-        <Offset>48</Offset>
-      </Offsets>
-    </CheatEntry>
-    <CheatEntry>
-      <ID>25947</ID>
-      <Description>"h3 z vel"</Description>
-      <VariableType>Float</VariableType>
-      <Address>"halo3.dll"+01164BEC</Address>
-      <Offsets>
-        <Offset>4C</Offset>
-      </Offsets>
-    </CheatEntry>
-    """
+	  <ID>25948</ID>
+	  <Description>"h3 x pos"</Description>
+	  <VariableType>Float</VariableType>
+	  <Address>"halo3.dll"+01164BEC</Address>
+	  <Offsets>
+		<Offset>4</Offset>
+	  </Offsets>
+	</CheatEntry>
+	<CheatEntry>
+	  <ID>25949</ID>
+	  <Description>"h3 y pos"</Description>
+	  <VariableType>Float</VariableType>
+	  <Address>"halo3.dll"+01164BEC</Address>
+	  <Offsets>
+		<Offset>8</Offset>
+	  </Offsets>
+	</CheatEntry>
+	<CheatEntry>
+	  <ID>25950</ID>
+	  <Description>"h3 z pos"</Description>
+	  <VariableType>Float</VariableType>
+	  <Address>"halo3.dll"+01164BEC</Address>
+	  <Offsets>
+		<Offset>C</Offset>
+	  </Offsets>
+	</CheatEntry>
+	<CheatEntry>
+	  <ID>25945</ID>
+	  <Description>"h3 x vel"</Description>
+	  <VariableType>Float</VariableType>
+	  <Address>"halo3.dll"+01164BEC</Address>
+	  <Offsets>
+		<Offset>44</Offset>
+	  </Offsets>
+	</CheatEntry>
+	<CheatEntry>
+	  <ID>25946</ID>
+	  <Description>"h3 y vel"</Description>
+	  <VariableType>Float</VariableType>
+	  <Address>"halo3.dll"+01164BEC</Address>
+	  <Offsets>
+		<Offset>48</Offset>
+	  </Offsets>
+	</CheatEntry>
+	<CheatEntry>
+	  <ID>25947</ID>
+	  <Description>"h3 z vel"</Description>
+	  <VariableType>Float</VariableType>
+	  <Address>"halo3.dll"+01164BEC</Address>
+	  <Offsets>
+		<Offset>4C</Offset>
+	  </Offsets>
+	</CheatEntry>
+	"""

@@ -8,7 +8,6 @@ import json
 from types import SimpleNamespace
 
 import asyncio
-#import threading
 import time
 
 k32 = windll.kernel32
@@ -156,7 +155,7 @@ class Governor:
         self.fpsWatcher = WatcherFPS()
         
 
-    def ready(self, obj):
+    async def ready(self, obj):
         if time.time() >= obj.lastRun+obj.interval:
             obj.run()
             self.timeframes.append(time.time())
@@ -168,7 +167,7 @@ class Governor:
         watcherStr = str('\n'.join([obj.name for obj in self.objects]))
         print(f"Current Watchers:{watcherStr}")
 
-    def fps(self):
+    async def fps(self):
         counter = 0
         if time.time() > self.fpsWatcher.lastRun + self.fpsWatcher.interval:
             self.fpsWatcher.lastRun = time.time()
@@ -176,19 +175,18 @@ class Governor:
                 for timeframe in reversed(self.timeframes):
                     if time.time() < timeframe + 1:
                         counter += 1
-                for object in self.objects:
-                    print(object.val)
+                # for object in self.objects:
+                #     print(object.val)
                 print(f"Reading game memory at {counter} frames per second")
 
     def objectData(self, watcherName):
         return filter(lambda x:x.name == watcherName, self.objects)[0].val
 
-    def loop(self):
+    async def loop(self):
         while True:
-            #time.sleep(5)
             for obj in self.objects:
-                self.ready(obj)
-            self.fps()
+                await self.ready(obj)
+            await self.fps()
 
 
 class Watcher:
@@ -204,19 +202,36 @@ class Watcher:
         self.val = self.proc.readDeepP(self.pointer.offsets, self.pointer.length, datatype=self.pointer.type)
         #print(self.val)
         self.lastRun = time.time()
+        return self.val
+
+    async def getCurrentValue(self):
+        self.run()
+        return self.val
    
+## to mess with async behavior
+# class testCounter: 
+#     def __init__(self, initial):
+#         self.count = initial
+
+#     def increment(self):
+#         self.count += 1
+#         self.output()
+
+#     def output(self):
+#         print(f"Current count: {self.count}")
+
 
 class WatcherFPS:
     def __init__(self):
         self.interval = 5
         self.lastRun = time.time()
 
-class Phone:
-    def __init__(self, string):
-        self.string = string
+# class Phone:
+#     def __init__(self, string):
+#         self.string = string
     
-    def __repr__(self) -> str:
-        return self.string
+#     def __repr__(self) -> str:
+#         return self.string
 
 def getPIDs(nameProcess):
     found = []
@@ -285,8 +300,7 @@ def printModules(pid, proc):
     for mod in mods:
         print(f"Index: {mod.index}\nModule: {mod.name}\nVirtual Address: {mod.address}")
 
-def start_here():
-    nameProcess = "MCC-Win64-Shipping.exe"
+def create_handle(nameProcess):
     PIDs = getPIDs(nameProcess)
     if type(PIDs) == type(None):
         print(f"Process {nameProcess} not found")
@@ -297,16 +311,17 @@ def start_here():
         proc = Process(PIDs[0], nameProcess)
     return proc
 
-    
-MCC = start_here()
-g = Governor()
-# level = playerOffsets.halo1.level
-# levelWatcher = Watcher(MCC, PointerShort(level), name="h1-level", interval=5)
+async def main():
+    MCC = create_handle(nameProcess)
+    g = Governor()
+    # level = playerOffsets.halo1.level
+    # levelWatcher = Watcher(MCC, PointerShort(level), name="h1-level", interval=5)
 
-h3xpos = playerOffsets.halo3.xpos
-h3xposWatcher = Watcher(MCC, PointerShort(h3xpos), name="h3xpos", interval=.005)
-#g.addWatcher(h3xposWatcher)
-h3ypos = playerOffsets.halo3.ypos
-h3yposWatcher = Watcher(MCC, PointerShort(h3ypos), name="h3ypos", interval=.005)
-#g.addWatcher(h3yposWatcher)
-#g.loop()
+    h3xpos = playerOffsets.halo3.xpos
+    h3xposWatcher = Watcher(MCC, PointerShort(h3xpos), name="h3xpos", interval=.005)
+    #g.addWatcher(h3xposWatcher)
+    h3ypos = playerOffsets.halo3.ypos
+    h3yposWatcher = Watcher(MCC, PointerShort(h3ypos), name="h3ypos", interval=.005)
+    #g.addWatcher(h3yposWatcher)
+    #await g.loop()
+asyncio.run(main())
