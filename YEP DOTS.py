@@ -77,11 +77,18 @@ def coordsToPixels( playerCoords, imgScale): # 0 and 1 are ingame coords, x and 
 # leftMarginPx = 20 * imgScale
 
 async def updateMap():
+	global playerDot, shiftedImg
 	playerCoords = await getPlayerPosition()
 	playerPx = coordsToPixels(playerCoords, imgScale)
-	playerDot = shiftedImg#.copy()
 	cv2.circle(playerDot, playerPx, 2, (0, 255, 0), -1)
 	cv2.imshow(windowName, playerDot)
+
+async def clearMap():
+	global playerDot, shiftedImg
+	print("CLEARING MAP!!!\nCLEARING MAP!!!\nCLEARING MAP!!!\nCLEARING MAP!!!")
+	playerCoords = await getPlayerPosition()
+	playerPx = coordsToPixels(playerCoords, imgScale)
+	playerDot = shiftedImg.copy()
 
 async def getPlayerPosition():
 	# playerX = await MEMORY.h3xposWatcher.getCurrentValue()
@@ -91,7 +98,7 @@ async def getPlayerPosition():
 
 async def mainLoop():
 	# Create cv2 window
-	global windowName, img, shiftedImg, imgScale
+	global windowName, img, shiftedImg, playerDot, imgScale
 	windowName = f"Silo Clip Viewer - {imgOffsets.name}"
 	cv2.namedWindow(windowName, cv2.WINDOW_AUTOSIZE)
 	img = cv2.imread(imgName)
@@ -101,12 +108,20 @@ async def mainLoop():
 	#playerDot = cv2.circle(shiftedImg, ((imgOffsets.start_x - imgOffsets.end_x) + IMG_MARGIN_X, int(IMG_MARGIN_Y / 2)), 2, (0, 255, 0), -1)
 
 	playerPx = coordsToPixels(await getPlayerPosition(), imgScale)
-	playerDot = shiftedImg#.copy()
+	playerDot = shiftedImg.copy()
 	cv2.circle(playerDot, playerPx, 2, (0, 255, 0), -1)
 	cv2.imshow(windowName, playerDot)
 	cv2.resizeWindow(windowName, (imgOffsets.start_x - imgOffsets.end_x) + 2 * IMG_MARGIN_X, (imgOffsets.end_y - imgOffsets.start_y) + 2 * IMG_MARGIN_Y) # adding margins to window resolution
+
+	# Main Logic
+	lastTick = 0
 	while True:
+		tick = await MEMORY.mcc.h3igtWatcher.getCurrentValue()
+		print(tick)
+		if lastTick > tick:
+			await clearMap()
 		await updateMap()
+		lastTick = tick
 		if cv2.waitKey(16) & 0xFF == ord('1'):
 			break
 

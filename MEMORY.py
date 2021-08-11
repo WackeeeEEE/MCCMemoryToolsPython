@@ -32,6 +32,8 @@ strToType = {
     "float":float()
 }
 
+gameOffsets = json.load(open("pointers.json", "r"), object_hook=lambda d: SimpleNamespace(**d))
+
 PROCESS_VM_READ = 0x0010 # READ-ONLY
 PROCESS_ALL_ACCESS = 0x1F0FFF # MORE_ACCESS
 PROCESS_QUERY_INFORMATION = 0x0400
@@ -318,8 +320,9 @@ class Root:
         
         self.h3xpos = playerOffsets.halo3.xpos
         self.h3xposWatcher = Watcher(self.MCC, PointerShort(self.h3xpos), name="h3xpos", interval=.005)
-        #g.addWatcher(h3xposWatcher)
         self.h3ypos = playerOffsets.halo3.ypos
         self.h3yposWatcher = Watcher(self.MCC, PointerShort(self.h3ypos), name="h3ypos", interval=.005)
+        self.h3igt = gameOffsets.halo3.igt2
+        self.h3igtWatcher = Watcher(self.MCC, PointerShort(self.h3igt), name="h3igt", interval=.005)
 
 mcc = Root()

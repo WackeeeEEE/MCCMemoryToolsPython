@@ -1,17 +1,36 @@
 {
     "halo1": {
         "level": {
-            "offsets":["0x03A15F58", "0x8", "0x2AA7D58"],
+            "offsets": ["0x03A15F58", "0x8", "0x2AA7D58"],
             "length":3,
             "type":"string"
             },
         "tick": {
-            "offsets":["0x03A15F58", "0x8", "0x2B1C7C4"],
+            "offsets": ["0x03A15F58", "0x8", "0x2B1C7C4"],
             "length":4,
             "type":"int"
             }
         },
     "halo3": {
-        "xpos": []
-    }
-    }
+        "igt1": {
+            "offsets": ["0x3A24FF8", "0x48", "0x1C4616C"],
+            "length":4,
+            "type":"int"
+            },
+        "igt2": {
+            "offsets": ["0x3A24FF8", "0x48", "0x2961E0C"],
+            "length":4,
+            "type":"int"
+            },
+        "igt3": {
+            "offsets": ["0x3A24FF8", "0x48", "0x2AD827C"],
+            "length":4,
+            "type":"int"
+            },
+        "igt4": {
+            "offsets": ["0x3A24FF8", "0x48", "0xA01770"],
+            "length":4,
+            "type":"int"
+            }
+        }
+}
