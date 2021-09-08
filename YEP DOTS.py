@@ -1,9 +1,11 @@
+from ctypes.wintypes import HANDLE
 import cv2
 import numpy as np
 import json
 import os
 import MEMORY
 import asyncio
+import time
 
 imgName = "centerOfClip_marked.PNG"
 img = cv2.imread(imgName)
@@ -56,7 +58,7 @@ WIN_PAD_Y = 200
 # Instantiate imgOffsets for current reference image
 imgOffsets = ImageOffsets()
 
-print(f"name: {imgOffsets.name}\nx: {imgOffsets.start_x}\ny: {imgOffsets.start_y}")
+#print(f"name: {imgOffsets.name}\nx: {imgOffsets.start_x}\ny: {imgOffsets.start_y}")
 
 # Define shifting image to match window
 def shift_img(img, imgOffsets):
@@ -117,10 +119,25 @@ async def mainLoop():
 	lastTick = 0
 	while True:
 		tick = await MEMORY.mcc.h3igtWatcher.getCurrentValue()
-		print(tick)
+		if lastTick < tick:
+			MEMORY.suspend(MEMORY.mcc.proc.handle)
+			print(f"suspended execution, tick: {tick}")
+			print(f"resuming execution")
+			MEMORY.resumeThread(MEMORY.mcc.proc.handle)
+			if tick - lastTick == 1:
+				print("correctly captured next tick")
+			if tick - lastTick == 2:
+				print("NOT CAPTURING EVERY TICK")
+		
+		if lastTick == tick:
+			#print(f"game is still on tick {tick}")
+			pass
+
 		if lastTick > tick:
+			print("tickback detected, resetting map")
 			await clearMap()
 		await updateMap()
+
 		lastTick = tick
 		if cv2.waitKey(16) & 0xFF == ord('1'):
 			break

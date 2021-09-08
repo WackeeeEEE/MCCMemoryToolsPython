@@ -1,4 +1,5 @@
 from ctypes import *
+import ctypes
 from ctypes.wintypes import *
 import psutil
 
@@ -11,17 +12,41 @@ import asyncio
 import time
 
 k32 = windll.kernel32
+
 openProc = k32.OpenProcess
-openProc.argtypes = DWORD, BOOL, DWORD
+createToolhelp32Snapshot = k32.CreateToolhelp32Snapshot
+thread32First = k32.Thread32First
+thread32Next = k32.Thread32Next
+CloseHandle = k32.CloseHandle
+openProc.argtypes = [DWORD, BOOL, DWORD]
 openProc.restype = HANDLE
+
 readProcMem = k32.ReadProcessMemory
 readProcMem.argtypes = [HANDLE, LPCVOID, LPVOID, c_size_t, POINTER(c_size_t)]
 readProcMem.restype = BOOL
+
 writeProcMem = k32.WriteProcessMemory
 writeProcMem.argtypes = [HANDLE, LPVOID, LPCVOID, c_size_t, POINTER(c_size_t)]
+
 psapi = windll.psapi
 psapi.GetModuleFileNameExA.argtypes = [HANDLE, HMODULE, LPSTR, DWORD]
 psapi.GetModuleFileNameExA.restype = BOOL
+
+# Attempt at suspension functions
+suspendThread = k32.SuspendThread
+resumeThread = k32.ResumeThread
+
+def suspend(tHandle):
+    ret = suspendThread(tHandle)
+    print(ret, type(ret))
+    if ret == -1:
+        print(f"ERROR: {GetLastError()}\n{FormatError(GetLastError())}")
+
+def resume(tHandle):
+    ret = resumeThread(tHandle)
+    print(ret, type(ret))
+    if ret == -1:
+        print(f"ERROR: {GetLastError()}\n{FormatError(GetLastError())}")
 
 
 nameProcess = "MCC-Win64-Shipping.exe"
@@ -37,6 +62,48 @@ gameOffsets = json.load(open("pointers.json", "r"), object_hook=lambda d: Simple
 PROCESS_VM_READ = 0x0010 # READ-ONLY
 PROCESS_ALL_ACCESS = 0x1F0FFF # MORE_ACCESS
 PROCESS_QUERY_INFORMATION = 0x0400
+
+THREAD_ALL_ACCESS = 0x0002
+TH32CS_SNAPTHREAD = 0x00000004
+
+class THREADENTRY32(ctypes.Structure): # Yoined from https://code.activestate.com/recipes/576362-list-system-process-and-process-information-on-win/
+    _fields_ = [
+        ('dwSize' , c_long ),
+        ('cntUsage' , c_long),
+        ('th32ThreadID' , c_long),
+        ('th32OwnerProcessID' , c_long),
+        ('tpBasePri' , c_long),
+        ('tpDeltaPri' , c_long),
+        ('dwFlags' , c_long) ]
+
+def listProcessThreads( ProcessID ):
+    hThreadSnap = c_void_p(0)
+    te32 = THREADENTRY32()
+    te32.dwSize = sizeof(THREADENTRY32)
+
+    hThreadSnap = createToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 )
+
+    ret = thread32First( hThreadSnap, pointer(te32) )
+
+    if ret == 0 :
+        print(f'ListProcessThreads() Error on Thread32First[{GetLastError()}]')
+        CloseHandle( hThreadSnap )
+        return False
+
+    tHandles = {}
+    while ret :
+        if te32.th32OwnerProcessID == ProcessID : 
+            tHandles[te32.th32ThreadID] = te32.tpBasePri
+        ret = thread32Next( hThreadSnap, pointer(te32) )
+    CloseHandle( hThreadSnap )
+    return tHandles
+
+# def findThreads(pid):
+#     print(pid)
+#     tHandle = -1
+#     threadListHandle = createToolhelp32Snapshot(TH32CS_SNAPTHREAD, pid)
+#     te32 = TE32C()
+#     return tHandle
 
 # Fun starts here
 
@@ -61,6 +128,11 @@ class Process:
             print("PROCESS ADDRESS NOT FOUND")
         else:
             print(f"Process {self.name} found at {self.address}")
+        #findThreads(self.pid)
+        #self.tHandle = 0
+        self.tHandles = listProcessThreads(self.pid)
+
+
 
     def readP(self, address, size):#, datatype=None): # size bytes
         buffer = create_string_buffer(size)
@@ -90,6 +162,14 @@ class Process:
             # if type(datatype) == type(ptr()): #eeeeeeeh, do i have to?
             #     print("as type {type(datatype)}: {data.asPtr()}")
         return data
+
+
+
+    def suspend(self):
+        suspendThread(self.tHandle)
+
+    def resume(self):
+        resumeThread(self.tHandle)
 
     def listModules(self, key=None):
         for mod in self.mods:
@@ -311,18 +391,19 @@ def create_handle(nameProcess):
         print(f"{len(PIDs)} Processes found, acting on first PID - {PIDs[0]}")
         print(PIDs)
         proc = Process(PIDs[0], nameProcess)
+        #print(f"Handle:{proc.handle} | Type: {type(proc.handle)}")
     return proc
 
 class Root:
     def __init__(self):
-        self.MCC = create_handle(nameProcess)
+        self.proc = create_handle(nameProcess)
         #g = Governor()
         
         self.h3xpos = playerOffsets.halo3.xpos
-        self.h3xposWatcher = Watcher(self.MCC, PointerShort(self.h3xpos), name="h3xpos", interval=.005)
+        self.h3xposWatcher = Watcher(self.proc, PointerShort(self.h3xpos), name="h3xpos", interval=.005)
         self.h3ypos = playerOffsets.halo3.ypos
-        self.h3yposWatcher = Watcher(self.MCC, PointerShort(self.h3ypos), name="h3ypos", interval=.005)
+        self.h3yposWatcher = Watcher(self.proc, PointerShort(self.h3ypos), name="h3ypos", interval=.005)
         self.h3igt = gameOffsets.halo3.igt2
-        self.h3igtWatcher = Watcher(self.MCC, PointerShort(self.h3igt), name="h3igt", interval=.005)
+        self.h3igtWatcher = Watcher(self.proc, PointerShort(self.h3igt), name="h3igt", interval=.005)
 
 mcc = Root()
