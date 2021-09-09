@@ -18,6 +18,9 @@ createToolhelp32Snapshot = k32.CreateToolhelp32Snapshot
 thread32First = k32.Thread32First
 thread32Next = k32.Thread32Next
 CloseHandle = k32.CloseHandle
+
+openThread = k32.OpenThread
+
 openProc.argtypes = [DWORD, BOOL, DWORD]
 openProc.restype = HANDLE
 
@@ -32,21 +35,39 @@ psapi = windll.psapi
 psapi.GetModuleFileNameExA.argtypes = [HANDLE, HMODULE, LPSTR, DWORD]
 psapi.GetModuleFileNameExA.restype = BOOL
 
+#PROCESS ACCESS RIGHTS
+PROCESS_VM_READ = 0x0010 # READ-ONLY
+PROCESS_ALL_ACCESS = 0x1F0FFF # MORE_ACCESS
+PROCESS_QUERY_INFORMATION = 0x0400
+
+#THREAD ACCESS RIGHTS
+THREAD_SUSPEND_RESUME = 0x0002
+TH32CS_SNAPTHREAD = 0x00000004
+
+formattedError = FormatError(GetLastError())
+
 # Attempt at suspension functions
 suspendThread = k32.SuspendThread
 resumeThread = k32.ResumeThread
 
-def suspend(tHandle):
-    ret = suspendThread(tHandle)
-    print(ret, type(ret))
-    if ret == -1:
-        print(f"ERROR: {GetLastError()}\n{FormatError(GetLastError())}")
+# dont think i need this?
+# def suspend(tHandle):
+#     ret = suspendThread(tHandle)
+#     #print(ret, type(ret))
+#     if ret == -1:
+#         print(f"ERROR: {GetLastError()}\n{FormatError(GetLastError())}")
+#         return -1
+#     #else:
+#         #print(ret)
 
-def resume(tHandle):
-    ret = resumeThread(tHandle)
-    print(ret, type(ret))
-    if ret == -1:
-        print(f"ERROR: {GetLastError()}\n{FormatError(GetLastError())}")
+# def resume(tHandle):
+#     ret = resumeThread(tHandle)
+#     #print(ret, type(ret))
+#     if ret == -1:
+#         print(f"ERROR: {GetLastError()}\n{FormatError(GetLastError())}")
+#         return -1
+#     #else:
+#         #print(ret)
 
 
 nameProcess = "MCC-Win64-Shipping.exe"
@@ -54,17 +75,12 @@ playerOffsets = json.load(open("playerOffsets.json", "r"), object_hook=lambda d:
 strToType = {
     "string":str(),
     "int":int(),
-    "float":float()
+    "float":float(),
+    "hex":bytes()
 }
 
 gameOffsets = json.load(open("pointers.json", "r"), object_hook=lambda d: SimpleNamespace(**d))
 
-PROCESS_VM_READ = 0x0010 # READ-ONLY
-PROCESS_ALL_ACCESS = 0x1F0FFF # MORE_ACCESS
-PROCESS_QUERY_INFORMATION = 0x0400
-
-THREAD_ALL_ACCESS = 0x0002
-TH32CS_SNAPTHREAD = 0x00000004
 
 class THREADENTRY32(ctypes.Structure): # Yoined from https://code.activestate.com/recipes/576362-list-system-process-and-process-information-on-win/
     _fields_ = [
@@ -98,12 +114,6 @@ def listProcessThreads( ProcessID ):
     CloseHandle( hThreadSnap )
     return tHandles
 
-# def findThreads(pid):
-#     print(pid)
-#     tHandle = -1
-#     threadListHandle = createToolhelp32Snapshot(TH32CS_SNAPTHREAD, pid)
-#     te32 = TE32C()
-#     return tHandle
 
 # Fun starts here
 
@@ -130,9 +140,15 @@ class Process:
             print(f"Process {self.name} found at {self.address}")
         #findThreads(self.pid)
         #self.tHandle = 0
-        self.tHandles = listProcessThreads(self.pid)
-
-
+        self.threadIDs = listProcessThreads(self.pid)
+        self.tHandles = []
+        for thread in self.threadIDs.keys():
+            tHandle = openThread(THREAD_SUSPEND_RESUME, self.handle, thread)
+            if tHandle == 0:
+                print(f"ERROR: {GetLastError()}\n{FormatError(GetLastError())}")
+            else:
+                self.tHandles.append(tHandle)
+        print(f"Initial number of handles: {len(self.tHandles)}")
 
     def readP(self, address, size):#, datatype=None): # size bytes
         buffer = create_string_buffer(size)
@@ -148,28 +164,41 @@ class Process:
         for offset in deepPointer[1:-1]:
             pt = self.readP(pt+offset, 8).asPtr()
         data = self.readP(pt+deepPointer[-1], size)
-        if datatype != None: # might implement this on the next highest level, not sure yet - ex: data return will be as"Type"()
-            if type(datatype) == type(int()):
-                #print(f"as type {type(datatype)}: {data.asInt()}")
-                if len(data.raw) == 4:
-                    return data.asInt32()
-            if type(datatype) == type(str()):
-                #print(f"as type {type(datatype)}: {data.asStr()}")
-                return data.asStr()
-            if type(datatype) == type(float()):
-                #print(f"as type {type(datatype)}: {data.asFloat()}")
-                return data.asFloat()
-            # if type(datatype) == type(ptr()): #eeeeeeeh, do i have to?
-            #     print("as type {type(datatype)}: {data.asPtr()}")
+        if data != None:
+            if datatype != None: # might implement this on the next highest level, not sure yet - ex: data return will be as"Type"()
+                if type(datatype) == type(int()):
+                    #print(f"as type {type(datatype)}: {data.asInt()}")
+                    if len(data.raw) == 4:
+                        return data.asInt32()
+                if type(datatype) == type(str()):
+                    #print(f"as type {type(datatype)}: {data.asStr()}")
+                    return data.asStr()
+                if type(datatype) == type(float()):
+                    #print(f"as type {type(datatype)}: {data.asFloat()}")
+                    return data.asFloat()
+                if type(datatype) == type(bytes()):
+                    return data.raw
+        else:
+            print(f"Memory read failed\n{GetLastError()}\n{FormatError(GetLastError())}")
         return data
 
-
-
     def suspend(self):
-        suspendThread(self.tHandle)
+        #suspend ALL
+        for tHandle in self.tHandles:
+            ret = suspendThread(tHandle)
+            if ret == -1:
+                print(f"failed to suspend tHandle {tHandle}, removing thread from pool\nERROR: {GetLastError()}\n{FormatError(GetLastError())}")
+                self.tHandles.remove(tHandle)
+        #suspendThread(self.tHandles)
 
     def resume(self):
-        resumeThread(self.tHandle)
+        #resume ALL
+        for tHandle in self.tHandles:
+            ret = resumeThread(tHandle)
+            if ret == -1:
+                print(f"failed to resume tHandle {tHandle}, removing thread from pool\nERROR: {GetLastError()}\n{FormatError(GetLastError())}")
+                self.tHandles.remove(tHandle)
+        #resumeThread(self.tHandles)
 
     def listModules(self, key=None):
         for mod in self.mods:
@@ -209,6 +238,8 @@ class Fragment:
         return unpack("<d", self.raw)[0]
     def asPtr(self): #kinda just for clarity, dont think i really need
         return unpack("<Q", self.raw)[0]
+    def asRaw(self): #just so i dont mistype shit somewhere
+        return self.raw
 
 class Pointer:
     def __init__(self, offsets, length, type): # list/tuple in
@@ -270,7 +301,6 @@ class Governor:
                 await self.ready(obj)
             await self.fps()
 
-
 class Watcher:
     def __init__(self, proc, pointer, name, interval=1):
         self.proc = proc
@@ -289,31 +319,11 @@ class Watcher:
     async def getCurrentValue(self):
         self.run()
         return self.val
-   
-## to mess with async behavior
-# class testCounter: 
-#     def __init__(self, initial):
-#         self.count = initial
-
-#     def increment(self):
-#         self.count += 1
-#         self.output()
-
-#     def output(self):
-#         print(f"Current count: {self.count}")
-
 
 class WatcherFPS:
     def __init__(self):
         self.interval = 5
         self.lastRun = time.time()
-
-# class Phone:
-#     def __init__(self, string):
-#         self.string = string
-    
-#     def __repr__(self) -> str:
-#         return self.string
 
 def getPIDs(nameProcess):
     found = []
@@ -395,15 +405,21 @@ def create_handle(nameProcess):
     return proc
 
 class Root:
-    def __init__(self):
+    def __init__(self, switch=0):
         self.proc = create_handle(nameProcess)
-        #g = Governor()
-        
-        self.h3xpos = playerOffsets.halo3.xpos
-        self.h3xposWatcher = Watcher(self.proc, PointerShort(self.h3xpos), name="h3xpos", interval=.005)
-        self.h3ypos = playerOffsets.halo3.ypos
-        self.h3yposWatcher = Watcher(self.proc, PointerShort(self.h3ypos), name="h3ypos", interval=.005)
-        self.h3igt = gameOffsets.halo3.igt2
-        self.h3igtWatcher = Watcher(self.proc, PointerShort(self.h3igt), name="h3igt", interval=.005)
+        if switch == 0:
+            self.h3xpos = playerOffsets.halo3.xpos
+            self.h3xposWatcher = Watcher(self.proc, PointerShort(self.h3xpos), name="h3xpos", interval=.005)
+            self.h3ypos = playerOffsets.halo3.ypos
+            self.h3yposWatcher = Watcher(self.proc, PointerShort(self.h3ypos), name="h3ypos", interval=.005)
+            self.h3igt = gameOffsets.halo3.igt2
+            self.h3igtWatcher = Watcher(self.proc, PointerShort(self.h3igt), name="h3igt", interval=.005)
+        if switch == 1:
+            self.h2igt = gameOffsets.halo2.igt
+            self.h2igtWatcher = Watcher(self.proc, PointerShort(self.h2igt), name="h2igt", interval=.000000000001) # maybe better?
+            self.h2input = gameOffsets.halo2.input
+            self.h2inputWatcher = Watcher(self.proc, PointerShort(self.h2input), name="h2input", interval=.000000000001) # maybe better?
+            self.h2pos = gameOffsets.halo2.pos
+            self.h2posWatcher = Watcher(self.proc, PointerShort(self.h2pos), name="h2pos", interval=.000000000001) # maybe better?
 
-mcc = Root()
+mcc = Root(1)# 0=h3 | 1=h2

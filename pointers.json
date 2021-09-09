@@ -11,6 +11,23 @@
             "type":"int"
             }
         },
+        "halo2": {
+            "igt": {
+                "offsets": ["0x3A24FF8", "0x28", "0x1694754"],
+                "length":4,
+                "type":"int"
+                },
+            "input": {
+                "offsets": ["0x3A24FF8", "0x28", "0x13DEC86"],
+                "length":3,
+                "type":"hex"
+                },
+            "pos": {
+                "offsets": ["0x3A24FF8", "0x28", "0xDA5CD8"],
+                "length":12,
+                "type":"hex"
+            }
+            },
     "halo3": {
         "igt1": {
             "offsets": ["0x3A24FF8", "0x48", "0x1C4616C"],

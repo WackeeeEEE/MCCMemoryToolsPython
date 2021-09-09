@@ -93,7 +93,6 @@ async def clearMap():
 	playerDot = shiftedImg.copy()
 
 async def getPlayerPosition():
-	# playerX = await MEMORY.h3xposWatcher.getCurrentValue()
 	playerX = await MEMORY.mcc.h3xposWatcher.getCurrentValue()
 	playerY = await MEMORY.mcc.h3yposWatcher.getCurrentValue()
 	return (playerX, playerY)
@@ -119,11 +118,12 @@ async def mainLoop():
 	lastTick = 0
 	while True:
 		tick = await MEMORY.mcc.h3igtWatcher.getCurrentValue()
+		#print(len(MEMORY.mcc.proc.tHandles))
 		if lastTick < tick:
-			MEMORY.suspend(MEMORY.mcc.proc.handle)
+			MEMORY.mcc.proc.suspend()
 			print(f"suspended execution, tick: {tick}")
 			print(f"resuming execution")
-			MEMORY.resumeThread(MEMORY.mcc.proc.handle)
+			MEMORY.mcc.proc.resume()
 			if tick - lastTick == 1:
 				print("correctly captured next tick")
 			if tick - lastTick == 2:
